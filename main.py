@@ -50,19 +50,6 @@ collection = db["testCollection"]
 class URLInput(BaseModel):
     url: str
 
-@app.get("/", response_class=HTMLResponse)
-async def read_home():
-    html_content = """
-    <html>
-        <body>
-            <h1>Welcome to FastAPI UI</h1>
-            <script>
-                console.log("JavaScript running!");
-            </script>
-        </body>
-    </html>
-    """
-    return html_content
 
 @app.get("/")
 def read_root():
