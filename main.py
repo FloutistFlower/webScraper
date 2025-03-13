@@ -13,9 +13,14 @@ import os
 from fastapi.responses import HTMLResponse
 import uvicorn
 
+import logging
+
+# Enable logging for FastAPI app
+logging.basicConfig(level=logging.DEBUG)
 
 #uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 # Prompt the user for a number
+
 '''
 url = input("Enter the target url: ")
 number_of_keywords = input("Enter the number of keywords: ")
