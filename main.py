@@ -11,6 +11,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 import os
 from fastapi.responses import HTMLResponse
+import uvicorn
 
 
 #uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -297,4 +298,8 @@ for rank, (url, anchor, title, rel, file_type, score) in enumerate(ranked_links,
         "keywords": keywords
     }
     collection.insert_one(data)
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
