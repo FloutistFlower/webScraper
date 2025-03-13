@@ -63,13 +63,13 @@ async def read_home():
     """
     return html_content
 
-#if erase_db == "Y":
-#    result = collection.delete_many({}) #erase old values
-@app.post("/process_url/")
-async def process_url(url_data: URLInput):
-    url = url_data.url
-    # Your scraping & processing logic here
-    return {"message": "URL processed", "url": url}
+@app.get("/")
+def read_root():
+    return {"message": "Hello, World!"}
+
+@app.get("/hello/{name}")
+def read_item(name: str):
+    return {"message": f"Hello, {name}!"}
 
 
 # Endpoint to insert a document
