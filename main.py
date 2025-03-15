@@ -45,7 +45,13 @@ relevant_terms = ["Budget",
     "phone number",
     "email",
     "board member",
-    "directory"]
+    "directory",
+    "revenue",
+    "budget changes",
+    "spending",
+    "member",
+    "associate",
+    "position"]
 irrelevant_terms = [ "Volunteering",
     "Deferment",
     "Property Tax",
@@ -90,15 +96,18 @@ irrelevant_terms = [ "Volunteering",
     "jobs",
     "job",
     "applicant",
-    "application"]
+    "application",
+    "vacation",
+    "festival",
+    "animals",
+    "news"]
 # Sample training data (URLs + metadata)
 x_train = relevant_terms + irrelevant_terms   
 
 y_train = [
     # 1 = Relevant, 0 = Not Relevant
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
-
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
 ]
 
 
@@ -136,15 +145,19 @@ class UserInput(BaseModel):
 
 
 async def extract_links(url):
-    """Asynchronously extract links from the URL using httpx and BeautifulSoup"""
+    """Asynchronously extract unique links from the URL using httpx and BeautifulSoup"""
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        links = []
+        unique_links = set()  # Use a set to store unique links
+        extracted_links = []  # Store final list of links
+
         for a in soup.find_all('a', href=True):
             full_url = urljoin(url, a['href'])
-            if full_url.startswith("http"):
+            if full_url.startswith("http") and full_url not in unique_links:
+                unique_links.add(full_url)  # Add to set to ensure uniqueness
+                
                 anchor_text = a.get_text(strip=True)
                 title_attr = a.get("title", "")
                 rel_attr = a.get("rel", "")
@@ -152,9 +165,10 @@ async def extract_links(url):
                 # Determine file type
                 file_extension = full_url.split('.')[-1].lower() if '.' in full_url.split('/')[-1] else "html"
 
-                links.append((full_url, anchor_text, title_attr, file_extension, rel_attr))
+                extracted_links.append((full_url, anchor_text, title_attr, file_extension, rel_attr))
 
-        return links
+        return extracted_links  # Return only unique links
+
 
 import mimetypes
 
