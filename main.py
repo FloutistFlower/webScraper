@@ -6,7 +6,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from pymongo import MongoClient
 from pydantic import BaseModel
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
 from bson import ObjectId
 import os
@@ -65,10 +65,22 @@ async def process_data(data: dict):
 async def run_script(data: dict):
     return await process_data(data)
 
+class UserInput(BaseModel):
+    user_input: str
+    url: str  # Ensure 'url' is explicitly required
+
 @app.post("/process")
-async def process_data(data: URLInput):
-    processed_result = f"You entered: {data.user_input}"
-    return {"message": "Success", "result": processed_result}
+async def process_data(data: UserInput):
+    try:
+        # Simulate processing (replace this with your logic)
+        if not data.user_input or not data.url:
+            raise HTTPException(status_code=400, detail="Both user_input and url are required")
+        
+        processed_result = f"You entered: {data.user_input}, URL: {data.url}"
+        return {"message": "Success", "result": processed_result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @app.get("/")
 def read_root():
