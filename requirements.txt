@@ -6,3 +6,5 @@ beautifulsoup4
 pymongo
 pydantic
 gunicorn
+motor
+httpx==0.24.0
