@@ -14,6 +14,103 @@ import uvicorn
 from motor.motor_asyncio import AsyncIOMotorClient
 
 
+# Sample training data (URLs + metadata)
+x_train = [
+    # Highly relevant financial reports and documents
+    "Budget",
+    "Finance",
+    "acfr",
+    "Budget Report",
+    "Finance Director",
+    "CFO",
+    "treasury",
+    "administrative",
+    "administration",
+    "director",
+    "monetary",
+    "board",
+    "CEO",
+    "CTO",
+    "Trustees",
+    "Leadership",
+    "https://example.com/reports/annual-budget-2024.pdf",
+    "https://example.com/finance/fiscal-year-2023-summary",
+    "https://citygov.org/documents/acfr-2023.pdf",
+    "https://citygov.org/finance-reports/tax-summary-2024",
+    "https://govdata.com/spending/2023-budget",
+    "https://example.com/gov/audit-reports-2024",
+    "https://example.com/finance/debt-policy",
+    "https://citygov.org/treasury/financial-outlook-2025",
+    "https://city.gov/documents/financial-strategy-2023",
+    "https://stategov.com/revenue-expenditure-2024",
+    "finance-and-administrative-services",
+
+    # Irrelevant general government links
+    "Volunteering",
+    "Deferment",
+    "Property Tax",
+  "Translate",
+    "Service",
+    "https://city.gov/parks-and-recreation",
+    "https://govportal.com/contact-us",
+    "https://example.com/mayor-office",
+    "https://govdata.com/housing-development",
+    "https://example.com/legal-department",
+    "https://city.gov/public-safety/police",
+    "LinkedIn",
+    "Instagram",
+    "facebook",
+    "Twitter",
+    "Contact Us",
+    "Report an Issue",
+    "Nextdoor",
+    "Youtube",
+    "site",
+    "visitors",
+    "government",
+    "Notifications",
+    "Compost",
+    "services",
+    "judicial",
+    "court",
+    "3661e8349526",
+    "parking",
+    "apply",
+    "volunteer",
+    "request",
+    "report",
+    "repair",
+    "broken",
+    "Engage Ann Arbor",
+    "Trash",
+    "Holiday",
+    "Demographics",
+    "Sports"
+]
+
+y_train = [
+    # 1 = Relevant, 0 = Not Relevant
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
+
+]
+
+
+# Convert text into numerical features
+vectorizer = TfidfVectorizer()
+x_train_tfidf = vectorizer.fit_transform(x_train)
+
+# Train the classifier
+model = LogisticRegression()
+model.fit(x_train_tfidf, y_train)
+
+# Save the model for future use
+with open("hybrid_link_classifier.pkl", "wb") as f:
+    pickle.dump((vectorizer, model), f)
+
+print("Model trained and saved!")
+
+
 # Enable logging for FastAPI app
 logging.basicConfig(level=logging.DEBUG)
 
@@ -70,7 +167,7 @@ async def run_script(url, keywords):
     links_data = await extract_links(url)
 
     # Rank the relevant links based on keywords
-    ranked_links = rank_relevant_links(links_data, keywords)
+    ranked_links = await rank_relevant_links(links_data, keywords)
 
     # Store the ranked links in MongoDB
     for url, anchor, title, rel, file_type, score in ranked_links:
@@ -84,27 +181,20 @@ async def run_script(url, keywords):
     return ranked_links
 
 
-def rank_relevant_links(links, keywords):
-    """Ranks relevant links based on keyword priority scoring."""
+async def rank_relevant_links(links, keywords):
     ranked_links = []
-
     for url, anchor, title, file_type, rel in links:
-        if classify_link_hybrid(url, anchor, title, rel) == "Relevant":  # Check if relevant
-            # Combine metadata for ranking
-            combined_text = f"{url} {anchor} {title} {rel}".lower()
-
-            # Compute keyword score with explicit priority weights
-            score = sum((len(keywords) - i) * combined_text.count(keyword) for i, keyword in enumerate(keywords))
-
-            # Debugging: print keyword matches
-            print(f"🔹 {url} | Score: {score} | Matches: {[keyword for keyword in keywords if keyword in combined_text]}")
-
-            ranked_links.append((url, anchor, title, rel, file_type, score))
-
-    # Sort by score (higher score = higher ranking)
+        try:
+            if await classify_link_hybrid(url, anchor, title, rel) == "Relevant":
+                combined_text = f"{url} {anchor} {title} {rel}".lower()
+                score = sum((len(keywords) - i) * combined_text.count(keyword) for i, keyword in enumerate(keywords))
+                ranked_links.append((url, anchor, title, rel, file_type, score))
+        except Exception as e:
+            logging.error(f"Error classifying link {url}: {e}")
+            continue
     ranked_links.sort(key=lambda x: x[5], reverse=True)
-
     return ranked_links
+
 
 
 @app.post("/process")
