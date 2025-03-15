@@ -14,6 +14,8 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 import logging
+import asyncio
+
 
 # Enable logging for FastAPI app
 logging.basicConfig(level=logging.DEBUG)
@@ -54,6 +56,15 @@ collection = db["testCollection"]
 
 class URLInput(BaseModel):
     url: str
+
+
+async def process_data(data: dict):
+    await asyncio.sleep(2)  # Simulate async work
+    return {"message": "Processed successfully", "input": data}
+
+@app.post("/run")
+async def run_script(data: dict):
+    return await process_data(data)
 
 
 @app.get("/")
@@ -294,4 +305,5 @@ for rank, (url, anchor, title, rel, file_type, score) in enumerate(ranked_links,
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
