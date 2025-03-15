@@ -39,7 +39,7 @@ except ValueError:
     print("Invalid input! Please enter a valid integer.")
 '''
 
-url = "https://www.a2gov.org/"  #target URL
+url = "https://www.google.com/"  #target URL
 keywords = ["budget", "finance", "acfr"]
 
 
@@ -66,18 +66,44 @@ async def run_script(data: dict):
     return await process_data(data)
 
 class UserInput(BaseModel):
-    user_input: str
-    url: str  # Ensure 'url' is explicitly required
+    url: str
+    number_of_keywords: int
+    keywords: list[str]  # A list of strings for the keywords
+
 
 @app.post("/process")
 async def process_data(data: UserInput):
     try:
-        # Simulate processing (replace this with your logic)
-        if not data.user_input or not data.url:
-            raise HTTPException(status_code=400, detail="Both user_input and url are required")
+        # Ensure both URL and keywords are provided
+        if not data.url or not data.keywords:
+            raise HTTPException(status_code=400, detail="Both URL and keywords are required")
         
-        processed_result = f"You entered: {data.user_input}, URL: {data.url}"
-        return {"message": "Success", "result": processed_result}
+        # Get the provided URL and keywords
+        url = data.url
+        keywords = data.keywords
+
+        # Log the URL and keywords for debugging
+        logging.debug(f"URL: {url}, Keywords: {keywords}")
+
+        # Extract the links from the provided URL
+        links_data = extract_links(url)
+        logging.debug(f"Extracted links data: {links_data}")
+
+        # Rank the relevant links based on keywords
+        ranked_links = rank_relevant_links(links_data, keywords)
+
+        # Store the ranked links in the MongoDB collection
+        for url, anchor, title, rel, file_type, score in ranked_links:
+            data = {
+                "url": url,
+                "type": file_type,
+                "relevance_score": score,
+                "keywords": keywords
+            }
+            collection.insert_one(data)
+        
+        # Return the ranked links
+        return {"message": "Processing successful", "ranked_links": ranked_links}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
@@ -276,7 +302,7 @@ links_data = extract_links(url)
 for url, anchor, title, file_type, rel in links_data:
     print(url, classify_link_hybrid(url, anchor,title, rel))
 
-def rank_relevant_links(links):
+def rank_relevant_links(links, keywords):
     """Ranks relevant links based on keyword priority scoring."""
     ranked_links = []
 
@@ -294,9 +320,10 @@ def rank_relevant_links(links):
             ranked_links.append((url, anchor, title, rel, file_type, score))
 
     # Sort by score (higher score = higher ranking)
-    ranked_links.sort(key=lambda x: x[4], reverse=True)
+    ranked_links.sort(key=lambda x: x[5], reverse=True)
 
     return ranked_links
+
 
 
 ranked_links = rank_relevant_links(links_data)
