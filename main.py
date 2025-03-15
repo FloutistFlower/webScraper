@@ -13,11 +13,7 @@ import asyncio
 import uvicorn
 from motor.motor_asyncio import AsyncIOMotorClient
 
-
-# Sample training data (URLs + metadata)
-x_train = [
-    # Highly relevant financial reports and documents
-    "Budget",
+relevant_terms = ["Budget",
     "Finance",
     "acfr",
     "Budget Report",
@@ -44,12 +40,15 @@ x_train = [
     "https://city.gov/documents/financial-strategy-2023",
     "https://stategov.com/revenue-expenditure-2024",
     "finance-and-administrative-services",
-
-    # Irrelevant general government links
-    "Volunteering",
+    "contact",
+    "contact information",
+    "phone number",
+    "email",
+    "board member"]
+irrelevant_terms = [ "Volunteering",
     "Deferment",
     "Property Tax",
-  "Translate",
+    "Translate",
     "Service",
     "https://city.gov/parks-and-recreation",
     "https://govportal.com/contact-us",
@@ -85,13 +84,19 @@ x_train = [
     "Trash",
     "Holiday",
     "Demographics",
-    "Sports"
-]
+    "Sports",
+    "contact us",
+    "jobs",
+    "job",
+    "applicant",
+    "application"]
+# Sample training data (URLs + metadata)
+x_train = relevant_terms + irrelevant_terms   
 
 y_train = [
     # 1 = Relevant, 0 = Not Relevant
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
 
 ]
 
@@ -144,6 +149,7 @@ async def extract_links(url):
                 file_extension = full_url.split('.')[-1] if '.' in full_url.split('/')[-1] else "HTML"
                 rel_attr = a.get("rel", "")
                 links.append((full_url, anchor_text, title_attr, file_extension.lower(), rel_attr))
+        print("Extracted Links:", [link[0] for link in links])  # Prints all extracted URLs
         return links
 
 
@@ -180,20 +186,48 @@ async def run_script(url, keywords):
 
     return ranked_links
 
-
 async def rank_relevant_links(links, keywords):
     ranked_links = []
-    for url, anchor, title, file_type, rel in links:
+    for url, anchor, title, rel, file_type in links:
         try:
-            if await classify_link_hybrid(url, anchor, title, rel) == "Relevant":
+            # Classify the link first
+            #if await classify_link_hybrid(url, anchor, title, rel) == "Relevant":
+                
+                # Combine URL and metadata for scoring
                 combined_text = f"{url} {anchor} {title} {rel}".lower()
-                score = sum((len(keywords) - i) * combined_text.count(keyword) for i, keyword in enumerate(keywords))
-                ranked_links.append((url, anchor, title, rel, file_type, score))
+
+                # Initialize score to 0
+                score = 0
+
+                # Prioritize user-provided keywords (higher weight)
+                for i, keyword in enumerate(keywords):
+                    # Add score only if the keyword is found in the text
+                    count = combined_text.count(keyword.lower())
+                    if count > 0:
+                        score += (len(keywords) - i) * count
+
+                # Add extra weights for important terms (optional)
+                additional_important_keywords = relevant_terms  # Use the terms defined as highly relevant
+                for i, keyword in enumerate(additional_important_keywords):
+                    # Add score only if the keyword is found in the text
+                    count = combined_text.count(keyword.lower())
+                    if count > 0:
+                        score += (len(additional_important_keywords) - i) * count
+
+                # Only append if the score is greater than 0
+                if score > 0:
+                    ranked_links.append((url, anchor, title, rel, file_type, score))
+
         except Exception as e:
             logging.error(f"Error classifying link {url}: {e}")
             continue
+
+    # Sort the links by the score in descending order (higher scores are more relevant)
     ranked_links.sort(key=lambda x: x[5], reverse=True)
     return ranked_links
+
+
+
 
 
 
