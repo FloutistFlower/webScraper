@@ -68,7 +68,6 @@ async def run_script(data: dict):
 @app.post("/process")
 async def process_data(data: URLInput):
     processed_result = f"You entered: {data.user_input}"
-    url = URLInput
     return {"message": "Success", "result": processed_result}
 
 @app.get("/")
