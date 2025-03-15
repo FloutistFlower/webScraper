@@ -44,7 +44,8 @@ relevant_terms = ["Budget",
     "contact information",
     "phone number",
     "email",
-    "board member"]
+    "board member",
+    "directory"]
 irrelevant_terms = [ "Volunteering",
     "Deferment",
     "Property Tax",
@@ -95,7 +96,7 @@ x_train = relevant_terms + irrelevant_terms
 
 y_train = [
     # 1 = Relevant, 0 = Not Relevant
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, #relevant
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 #irrelevant
 
 ]
@@ -146,11 +147,22 @@ async def extract_links(url):
             if full_url.startswith("http"):
                 anchor_text = a.get_text(strip=True)
                 title_attr = a.get("title", "")
-                file_extension = full_url.split('.')[-1] if '.' in full_url.split('/')[-1] else "HTML"
                 rel_attr = a.get("rel", "")
-                links.append((full_url, anchor_text, title_attr, file_extension.lower(), rel_attr))
-        print("Extracted Links:", [link[0] for link in links])  # Prints all extracted URLs
+
+                # Determine file type
+                file_extension = full_url.split('.')[-1].lower() if '.' in full_url.split('/')[-1] else "html"
+
+                links.append((full_url, anchor_text, title_attr, file_extension, rel_attr))
+
         return links
+
+import mimetypes
+
+def get_file_type(url):
+    """Infer file type from URL or return 'HTML' as default."""
+    guessed_type, _ = mimetypes.guess_type(url)
+    return guessed_type if guessed_type else "HTML"
+
 
 
 async def classify_link_hybrid(url, anchor, title, rel):
@@ -175,16 +187,18 @@ async def run_script(url, keywords):
     # Rank the relevant links based on keywords
     ranked_links = await rank_relevant_links(links_data, keywords)
 
-    # Store the ranked links in MongoDB
-    for url, anchor, title, rel, file_type, score in ranked_links:
-        collection.insert_one({
-            "url": url,
-            "type": file_type,
-            "relevance_score": score,
-            "keywords": keywords
-        })
+    # Store the ranked links in MongoDB with correct fields
+    for link in ranked_links:
+        document = {
+            "URL": link[0],  # URL
+            "type": link[4] if link[4] else "html",  # File type (default to "html" if missing)
+            "relevance_score": link[5],  # Relevance score
+            "keywords": keywords  # Provided keywords
+        }
+        await collection.insert_one(document)
 
     return ranked_links
+
 
 async def rank_relevant_links(links, keywords):
     ranked_links = []
