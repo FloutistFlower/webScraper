@@ -125,22 +125,28 @@ class DataItem(BaseModel):
     name: str
     value: int
 
-@app.post("/add_data")
-def add_data(item: DataItem):
-    return {"message": "Data added successfully", "item": item}
-
-# Endpoint to fetch all documents
 @app.get("/get_data")
-def get_data():
-    # Retrieve all documents from MongoDB
-    data = list(collection.find({}, {"_id": 0}))  # Exclude MongoDB ObjectId
-    return {"data": data}
+async def get_data():
+    try:
+        # Fetch all documents in the collection, excluding the MongoDB ObjectId
+        data = await collection.find({}, {"_id": 0}).to_list(None)
+        
+        # If no data found, return a message indicating that
+        if not data:
+            return {"message": "No data found in the collection"}
+        
+        return {"data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve data: {str(e)}")
 
-
-@app.delete("/delete_all")
-def delete_all_data():
-    result = collection.delete_many({})  # Deletes all documents
-    return {"message": f"Deleted {result.deleted_count} documents"}
+# Route to delete all documents from the collection
+@app.delete("/delete_all/")
+async def delete_all_data():
+    try:
+        result = await collection.delete_many({})  # Deletes all documents in the collection
+        return {"message": f"Deleted {result.deleted_count} documents"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete documents: {str(e)}")
 
 
 if __name__ == "__main__":
