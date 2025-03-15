@@ -57,7 +57,6 @@ collection = db["testCollection"]
 class URLInput(BaseModel):
     url: str
 
-
 async def process_data(data: dict):
     await asyncio.sleep(2)  # Simulate async work
     return {"message": "Processed successfully", "input": data}
@@ -66,6 +65,11 @@ async def process_data(data: dict):
 async def run_script(data: dict):
     return await process_data(data)
 
+@app.post("/process")
+async def process_data(data: URLInput):
+    processed_result = f"You entered: {data.user_input}"
+    url = URLInput
+    return {"message": "Success", "result": processed_result}
 
 @app.get("/")
 def read_root():
