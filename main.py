@@ -121,6 +121,27 @@ async def process_data(data: UserInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
+class DataItem(BaseModel):
+    name: str
+    value: int
+
+@app.post("/add_data")
+def add_data(item: DataItem):
+    return {"message": "Data added successfully", "item": item}
+
+# Endpoint to fetch all documents
+@app.get("/get_data")
+def get_data():
+    # Retrieve all documents from MongoDB
+    data = list(collection.find({}, {"_id": 0}))  # Exclude MongoDB ObjectId
+    return {"data": data}
+
+
+@app.delete("/delete_all")
+def delete_all_data():
+    result = collection.delete_many({})  # Deletes all documents
+    return {"message": f"Deleted {result.deleted_count} documents"}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
